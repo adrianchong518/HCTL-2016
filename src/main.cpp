@@ -1,7 +1,5 @@
 #include <Arduino.h>
 
-#include <PID.h>
-
 const uint8_t pin_CLK = 10;
 const uint8_t pin_SEL = 39;
 const uint8_t pin_OE = 40;
@@ -11,13 +9,11 @@ const uint8_t pin_PWM = 5;
 const uint8_t pin_inA = 7;
 const uint8_t pin_inB = 8;
 
-const double Kp = 2.9;
+const double Kp = 2.8;
 const double Ki = 0;
-const double Kd = 6.8;
+const double Kd = 6.3;
 const long min = -255;
 const long max = 255;
-
-PID pid(Kp, Ki, Kd, min, max);
 
 void setMotorSpeed(int pwmSpeed) {
   if (pwmSpeed > 0) {
@@ -29,8 +25,8 @@ void setMotorSpeed(int pwmSpeed) {
     digitalWrite(pin_inB, HIGH);
     analogWrite(pin_PWM, -pwmSpeed);
   } else {
-    digitalWrite(pin_inA, LOW);
-    digitalWrite(pin_inB, LOW);
+    digitalWrite(pin_inA, HIGH);
+    digitalWrite(pin_inB, HIGH);
     analogWrite(pin_PWM, 0);
   }
 }
@@ -78,33 +74,13 @@ short readLocation() {
   return location;
 }
 
-String input = "";
-bool inputFinished = false;
 void loop() {
-  while (Serial.available()) {
-    char in = Serial.read();
-
-    if (in == '\r' || in == '\n') {
-      inputFinished = true;
-      break;
-    }
-    if (in != -1) {
-      input.concat(in);
-    }
-  }
-
-  if (inputFinished) {
-    int target = input.toInt();
-    pid.setTarget(target);
-    Serial.println("Target (" + String(target) + ") Set");
-
-    inputFinished = false;
-    input = "";
-  }
-
   short location = readLocation();
-  int pwmControl = pid.calculatePID(location);
-  setMotorSpeed(pwmControl);
-
-  Serial.println(String(location) + " | " + String(pwmControl));
+  if (location <= 0) {
+    Serial.println("DIR: CW | LC: " + String(location));
+    setMotorSpeed(50);
+  } else if (location >= 1600) {
+    Serial.println("DIR: CCW | LC: " + String(location));
+    setMotorSpeed(-50);
+  }
 }
